@@ -6,6 +6,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>FotoChallenge · Toskana 2026</title>
+<link rel="manifest" href="data:application/json,{%22name%22:%22FotoChallenge%22,%22short_name%22:%22FotoChallenge%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%230f0f0f%22,%22theme_color%22:%22%230f0f0f%22,%22icons%22:[{%22src%22:%22data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%230f0f0f'/%3E%3Ccircle cx='256' cy='256' r='110' fill='none' stroke='%23e8b84b' stroke-width='28'/%3E%3Ccircle cx='256' cy='256' r='60' fill='%23e8b84b'/%3E%3Crect x='80' y='160' width='352' height='240' rx='24' fill='none' stroke='%23e8b84b' stroke-width='20'/%3E%3Crect x='160' y='120' width='80' height='40' rx='10' fill='%23e8b84b'/%3E%3C/svg%3E%22,%22sizes%22:%22512x512%22,%22type%22:%22image/svg+xml%22}]}">
+<meta name="theme-color" content="#0f0f0f">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body { font-family: -apple-system, 'Segoe UI', system-ui, sans-serif; background: #0f0f0f; color: #f0f0f0; min-height: 100vh; }
@@ -110,6 +112,25 @@
   .config-input { width: 100%; padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: #f0f0f0; font-size: 14px; font-family: monospace; margin-bottom: 8px; }
   .config-save-btn { width: 100%; padding: 14px; background: #e8b84b; border: none; border-radius: 10px; color: #000; font-size: 16px; font-weight: 700; cursor: pointer; margin-bottom: 12px; }
   .config-note { font-size: 12px; color: #666; line-height: 1.5; }
+
+  /* Countdown screen */
+  .countdown-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; padding:32px; text-align:center; background: radial-gradient(ellipse at 50% 60%, #1a1200 0%, #0f0f0f 70%); }
+  .cd-top { font-size:13px; letter-spacing:3px; text-transform:uppercase; color:#888; margin-bottom:24px; }
+  .cd-logo { font-size:64px; margin-bottom:8px; }
+  .cd-tagline { font-size:26px; font-weight:700; color:#e8b84b; line-height:1.3; margin-bottom:6px; }
+  .cd-sub { font-size:15px; color:#888; margin-bottom:48px; font-style:italic; }
+  .cd-tiles { display:flex; gap:12px; margin-bottom:40px; }
+  .cd-tile { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:14px; padding:16px 18px; min-width:72px; }
+  .cd-num { font-size:40px; font-weight:700; color:#e8b84b; line-height:1; }
+  .cd-unit { font-size:11px; color:#666; margin-top:4px; text-transform:uppercase; letter-spacing:1px; }
+  .cd-date { font-size:13px; color:#555; margin-top:8px; }
+  .cd-bypass { margin-top:32px; padding:6px 16px; background:none; border:1px solid #222; border-radius:8px; color:#333; font-size:11px; cursor:pointer; }
+  .cd-bypass:hover { color:#555; border-color:#333; }
+
+  /* Logout / delete */
+  .logout-btn { display:block; margin: 8px auto 0; padding:8px 20px; background:none; border:1px solid #2a2a2a; border-radius:8px; color:#444; font-size:12px; cursor:pointer; }
+  .delete-btn { width:100%; padding:10px; background:none; border:1px solid #3a1a1a; border-radius:8px; color:#a44; font-size:13px; cursor:pointer; margin-top:8px; }
+
   code { background: #1a1a1a; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: #e8b84b; }
 
   /* Lightbox */
@@ -123,7 +144,7 @@
 <body>
 <div id="app"></div>
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
-  <span class="lightbox-close"><div id="app"></div>times;</span>
+  <span class="lightbox-close">&times;</span>
   <img src="" alt="">
   <div class="lightbox-name"></div>
 </div>
@@ -136,6 +157,46 @@ const MOTTOS = [
   "Menschen", "Essen & Trinken", "Unterwegs", "Himmel", "Stimmung",
   "Heimlich", "Farben", "Klein & Groß", "Sonnenuntergang", "Erinnerung", "Ira"
 ];
+
+
+// ── Countdown ────────────────────────────────────────────────────────────────
+function getCountdown() {
+  const target = new Date("2026-08-01T00:00:00");
+  const now = new Date();
+  const diff = target - now;
+  if (diff <= 0) return null;
+  const days  = Math.floor(diff / 86400000);
+  const hours = Math.floor((diff % 86400000) / 3600000);
+  const mins  = Math.floor((diff % 3600000)  / 60000);
+  const secs  = Math.floor((diff % 60000)    / 1000);
+  return { days, hours, mins, secs, diff };
+}
+
+function renderCountdown(app) {
+  const cd = getCountdown();
+  if (!cd) { boot(); return; }
+  app.innerHTML = `
+    <div class="countdown-screen">
+      <div class="cd-top">Toskana · August 2026</div>
+      <div class="cd-logo">📷</div>
+      <div class="cd-tagline">Jeder Moment zählt.<br>Wer drückt am besten ab?</div>
+      <div class="cd-sub">Das große Familien-Fotospiel startet bald.</div>
+      <div class="cd-tiles">
+        <div class="cd-tile"><div class="cd-num">${cd.days}</div><div class="cd-unit">Tage</div></div>
+        <div class="cd-tile"><div class="cd-num">${String(cd.hours).padStart(2,'0')}</div><div class="cd-unit">Std</div></div>
+        <div class="cd-tile"><div class="cd-num">${String(cd.mins).padStart(2,'0')}</div><div class="cd-unit">Min</div></div>
+        <div class="cd-tile"><div class="cd-num">${String(cd.secs).padStart(2,'0')}</div><div class="cd-unit">Sek</div></div>
+      </div>
+      <div class="cd-date">Start: 1. August 2026</div>
+      <button class="cd-bypass" onclick="bypassCountdown()">Entwicklermodus</button>
+    </div>`;
+  setTimeout(() => renderCountdown(app), 1000);
+}
+
+window.bypassCountdown = function() {
+  localStorage.setItem("fc_bypass_cd", "1");
+  boot();
+};
 
 // ── Storage: JSONBin ──────────────────────────────────────────────────────────
 // JSONBin.io: free, no account needed to read, master key needed to create/write
@@ -361,6 +422,7 @@ function renderApp(app) {
       <button class="primary-btn" onclick="document.getElementById('file-input').click()" ${uploading ? "disabled" : ""}>
         ${uploading ? "Wird hochgeladen…" : myPhotoToday ? "Foto ersetzen" : "Foto hochladen"}
       </button>
+      ${myPhotoToday ? `<button class="delete-btn" onclick="deleteMyPhoto()">🗑 Mein Foto löschen</button>` : ""}
       <div class="divider"></div>
       <h3 class="sub-title">Wer hat heute schon hochgeladen:</h3>
       <div class="thumb-grid">
@@ -461,7 +523,7 @@ function renderApp(app) {
         <span class="header-emoji">📷</span>
         <div>
           <div class="header-title">FotoChallenge</div>
-          <div class="header-sub">Tag ${day + 1} · ${myName}</div>
+          <div class="header-sub">Tag ${day + 1} · ${myName} <button class="logout-btn" style="display:inline;padding:2px 8px;font-size:10px;margin-left:6px;" onclick="logout()">↩ wechseln</button></div>
         </div>
       </div>
       <div class="motto-tag">
@@ -649,6 +711,12 @@ function startPolling() {
 async function boot() {
   state.screen = "loading";
   render();
+  // Show countdown until Aug 1 unless bypassed
+  const bypass = localStorage.getItem("fc_bypass_cd");
+  if (!bypass && getCountdown()) {
+    renderCountdown(document.getElementById("app"));
+    return;
+  }
 
   if (!BIN_ID || !API_KEY) {
     state.screen = "config";
@@ -678,6 +746,25 @@ async function boot() {
 }
 
 // Expose all functions used in onclick= attributes to global scope
+
+window.logout = function() {
+  localStorage.removeItem("fc_me");
+  state.myName = null;
+  state.myRatings = {};
+  state.screen = "name";
+  render();
+};
+
+window.deleteMyPhoto = async function() {
+  if (!state.shared || !state.myName) return;
+  const newPhotos = { ...state.shared.photos, today: { ...state.shared.photos.today } };
+  delete newPhotos.today[state.myName];
+  const newShared = { ...state.shared, photos: newPhotos };
+  const ok = await saveShared(newShared);
+  if (ok) { state.shared = newShared; }
+  render();
+};
+
 window.handleConfigSave = handleConfigSave;
 window.selectName = selectName;
 window.switchTab = switchTab;
