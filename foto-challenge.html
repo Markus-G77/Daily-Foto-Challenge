@@ -645,7 +645,7 @@ async function handleUpload(input) {
       state.error = "Upload fehlgeschlagen. Bitte nochmal versuchen.";
     }
   } catch (e) {
-    state.error = "Fehler: " + e.message;
+    state.error = "Fehler: " + (e.message || e) + " | Dateigröße: " + (file ? Math.round(file.size/1024) + "KB" : "?");
   }
   state.uploading = false;
   render();
