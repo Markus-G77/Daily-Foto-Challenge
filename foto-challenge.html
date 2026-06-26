@@ -338,7 +338,7 @@ function renderApp(app) {
             <span class="big-emoji">📷</span><p>Foto auswählen</p>
            </div>`
       }
-      <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleUpload(this)" capture="environment">
+      <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleUpload(this)">
       <button class="primary-btn" onclick="document.getElementById('file-input').click()" ${uploading ? "disabled" : ""}>
         ${uploading ? "Wird hochgeladen…" : myPhotoToday ? "Foto ersetzen" : "Foto hochladen"}
       </button>
