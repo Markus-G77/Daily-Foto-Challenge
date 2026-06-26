@@ -111,10 +111,22 @@
   .config-save-btn { width: 100%; padding: 14px; background: #e8b84b; border: none; border-radius: 10px; color: #000; font-size: 16px; font-weight: 700; cursor: pointer; margin-bottom: 12px; }
   .config-note { font-size: 12px; color: #666; line-height: 1.5; }
   code { background: #1a1a1a; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: #e8b84b; }
+
+  /* Lightbox */
+  .lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.95); z-index:1000; align-items:center; justify-content:center; flex-direction:column; }
+  .lightbox.open { display:flex; }
+  .lightbox img { max-width:100vw; max-height:90vh; object-fit:contain; }
+  .lightbox-name { color:#e8b84b; font-size:14px; font-weight:600; margin-top:12px; }
+  .lightbox-close { position:absolute; top:16px; right:20px; font-size:32px; color:#fff; cursor:pointer; line-height:1; }
 </style>
 </head>
 <body>
 <div id="app"></div>
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <span class="lightbox-close"><div id="app"></div>times;</span>
+  <img src="" alt="">
+  <div class="lightbox-name"></div>
+</div>
 
 <script>
 const PLAYERS = ["Markus", "Marion", "Levy", "Chey"];
@@ -169,18 +181,25 @@ async function createBin(initialData) {
 }
 
 // ── Image compression ─────────────────────────────────────────────────────────
-function compressImage(file, maxWidth = 900) {
+function compressImage(file) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
-      const scale = Math.min(1, maxWidth / img.width);
+      const maxSide = 1080;
+      const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
       const canvas = document.createElement("canvas");
       canvas.width = Math.round(img.width * scale);
       canvas.height = Math.round(img.height * scale);
       canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
       URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL("image/jpeg", 0.72));
+      const qualities = [0.7, 0.55, 0.4, 0.28, 0.18];
+      let result;
+      for (const q of qualities) {
+        result = canvas.toDataURL("image/jpeg", q);
+        if (result.length < 110000) break;
+      }
+      resolve(result);
     };
     img.onerror = reject;
     img.src = url;
@@ -333,7 +352,7 @@ function renderApp(app) {
       <p class="hint">Thema: <strong>${motto}</strong></p>
       ${error ? `<div class="error-banner">${error}</div>` : ""}
       ${myPhotoToday
-        ? `<img class="my-photo" src="${myPhotoToday}" alt="Mein Foto"><p class="hint">✓ Hochgeladen. Du kannst es ersetzen:</p>`
+        ? `<img class="my-photo" src="${myPhotoToday}" alt="Mein Foto" onclick="openLightbox(this.src,'Mein Foto')" style="cursor:pointer"><p class="hint">✓ Hochgeladen. Du kannst es ersetzen:</p>`
         : `<div class="upload-placeholder" onclick="document.getElementById('file-input').click()">
             <span class="big-emoji">📷</span><p>Foto auswählen</p>
            </div>`
@@ -348,7 +367,7 @@ function renderApp(app) {
         ${PLAYERS.map(p => `
           <div class="thumb-item">
             ${todayPhotos[p]
-              ? `<img class="thumb" src="${todayPhotos[p]}" alt="${p}">`
+              ? `<img class="thumb" src="${todayPhotos[p]}" alt="${p}" onclick="openLightbox(this.src,'${p}')" style="cursor:pointer">`
               : `<div class="thumb-empty">⏳</div>`}
             <span class="thumb-name">${p}</span>
           </div>`).join("")}
@@ -371,7 +390,7 @@ function renderApp(app) {
         return `
           <div class="rate-card">
             ${photo
-              ? `<img class="rate-photo" src="${photo}" alt="${person}">`
+              ? `<img class="rate-photo" src="${photo}" alt="${person}" onclick="openLightbox(this.src,'${person}')" style="cursor:pointer">`
               : `<div class="rate-empty">⏳ ${person} hat noch nicht hochgeladen</div>`}
             <div class="rate-row">
               <span class="rate-name">${person}</span>
@@ -411,7 +430,7 @@ function renderApp(app) {
             const avg = vals.length ? (vals.reduce((a,b) => a+b,0)/vals.length).toFixed(1) : null;
             return `
               <div class="rate-card">
-                ${photo ? `<img class="rate-photo" src="${photo}" alt="${p}">` : `<div class="rate-empty">Kein Foto</div>`}
+                ${photo ? `<img class="rate-photo" src="${photo}" alt="${p}" onclick="openLightbox(this.src,'${p}')" style="cursor:pointer">` : `<div class="rate-empty">Kein Foto</div>`}
                 <div class="rate-row">
                   <span class="rate-name">${p}</span>
                   <span class="rate-score">${avg ? `⭐ ${avg}` : "–"}</span>
@@ -669,6 +688,16 @@ window.advanceDay = advanceDay;
 window.loadAndRender = loadAndRender;
 
 boot();
+
+window.openLightbox = function(src, name) {
+  const lb = document.getElementById("lightbox");
+  lb.querySelector("img").src = src;
+  lb.querySelector(".lightbox-name").textContent = name;
+  lb.classList.add("open");
+};
+window.closeLightbox = function() {
+  document.getElementById("lightbox").classList.remove("open");
+};
 </script>
 </body>
 </html>
