@@ -201,30 +201,21 @@ window.bypassCountdown = function() {
   boot();
 };
 
-// ── Storage: JSONBin ──────────────────────────────────────────────────────────
-// JSONBin.io: free, no account needed to read, master key needed to create/write
-// We store BIN_ID and API_KEY in localStorage (Markus sets it up once)
-
+// ── Storage: JSONBin (one bin per photo) ────────────────────────────────────
 const JSONBIN_BASE = "https://api.jsonbin.io/v3/b";
 let BIN_ID = localStorage.getItem("fc_bin_id") || "";
 let API_KEY = localStorage.getItem("fc_api_key") || "";
 
-async function loadShared() {
-  if (!BIN_ID) return null;
+async function binGet(id) {
   try {
-    const r = await fetch(`${JSONBIN_BASE}/${BIN_ID}/latest`, {
-      headers: { "X-Master-Key": API_KEY }
-    });
+    const r = await fetch(`${JSONBIN_BASE}/${id}/latest`, { headers: { "X-Master-Key": API_KEY } });
     if (!r.ok) return null;
-    const j = await r.json();
-    return j.record;
+    return (await r.json()).record;
   } catch { return null; }
 }
-
-async function saveShared(data) {
-  if (!BIN_ID) return false;
+async function binPut(id, data) {
   try {
-    const r = await fetch(`${JSONBIN_BASE}/${BIN_ID}`, {
+    const r = await fetch(`${JSONBIN_BASE}/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", "X-Master-Key": API_KEY },
       body: JSON.stringify(data)
@@ -232,18 +223,71 @@ async function saveShared(data) {
     return r.ok;
   } catch { return false; }
 }
+async function binCreate(data) {
+  try {
+    const r = await fetch(JSONBIN_BASE, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Master-Key": API_KEY, "X-Bin-Private": "true" },
+      body: JSON.stringify(data)
+    });
+    if (!r.ok) return null;
+    return (await r.json()).metadata.id;
+  } catch { return null; }
+}
 
-async function createBin(initialData) {
-  // Store only appState + empty photoBins index (photos go in separate bins)
-  const payload = { appState: initialData.appState || initialData, photoBins: {} };
-  const r = await fetch(JSONBIN_BASE, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Master-Key": API_KEY, "X-Bin-Private": "true" },
-    body: JSON.stringify(payload)
-  });
-  if (!r.ok) throw new Error("Bin konnte nicht erstellt werden");
-  const j = await r.json();
-  return j.metadata.id;
+// Load state bin + individual photo bins in parallel
+async function loadShared() {
+  if (!BIN_ID) return null;
+  try {
+    const root = await binGet(BIN_ID);
+    if (!root) return null;
+    const pb = root.photoBins || {};
+    const players = ["Markus","Marion","Levy","Chey"];
+    const [tRes, yRes] = await Promise.all([
+      Promise.all(players.map(p => pb["t_"+p] ? binGet(pb["t_"+p]) : Promise.resolve(null))),
+      Promise.all(players.map(p => pb["y_"+p] ? binGet(pb["y_"+p]) : Promise.resolve(null))),
+    ]);
+    const today = {}, yesterday = {};
+    players.forEach((p,i) => {
+      if (tRes[i]?.photo) today[p] = tRes[i].photo;
+      if (yRes[i]?.photo) yesterday[p] = yRes[i].photo;
+    });
+    const appState = root.appState || {
+      currentDay: 0, dayStarted: new Date().toISOString(), yesterdayWinner: null, ratings: {}
+    };
+    return { appState, photos: { today, yesterday }, photoBins: pb };
+  } catch(e) { console.error("loadShared:", e); return null; }
+}
+
+// Save only appState + photoBins index (no photos)
+async function saveShared(data) {
+  if (!BIN_ID) return false;
+  const { appState, photoBins } = data;
+  return binPut(BIN_ID, { appState, photoBins: photoBins || {} });
+}
+
+// Upload one photo to its own bin
+async function savePhoto(person, photoData) {
+  const root = await binGet(BIN_ID);
+  if (!root) return false;
+  const pb = root.photoBins || {};
+  const key = "t_" + person;
+  if (!pb[key]) {
+    const newId = await binCreate({ photo: photoData });
+    if (!newId) return false;
+    pb[key] = newId;
+  } else {
+    if (!await binPut(pb[key], { photo: photoData })) return false;
+  }
+  return binPut(BIN_ID, { appState: root.appState, photoBins: pb });
+}
+
+async function deletePhotoFromBin(person) {
+  const root = await binGet(BIN_ID);
+  if (!root) return false;
+  const pb = root.photoBins || {};
+  delete pb["t_" + person];
+  return binPut(BIN_ID, { appState: root.appState, photoBins: pb });
 }
 
 // ── Image compression ─────────────────────────────────────────────────────────
@@ -642,19 +686,15 @@ async function handleUpload(input) {
   render();
   try {
     const compressed = await compressImage(file);
-    const newPhotos = {
-      ...state.shared.photos,
-      today: { ...(state.shared.photos.today || {}), [state.myName]: compressed }
-    };
-    const newShared = { ...state.shared, photos: newPhotos };
-    const ok = await saveShared(newShared);
+    const ok = await savePhoto(state.myName, compressed);
     if (ok) {
-      state.shared = newShared;
+      const newPhotos = { ...state.shared.photos, today: { ...(state.shared.photos.today || {}), [state.myName]: compressed } };
+      state.shared = { ...state.shared, photos: newPhotos };
       state.tab = "rate";
     } else {
-      state.error = "Upload fehlgeschlagen. Bitte nochmal versuchen.";
+      state.error = "Upload fehlgeschlagen. Dateigröße: " + Math.round(file.size/1024) + "KB";
     }
-  } catch (e) {
+    } catch (e) {
     state.error = "Fehler: " + (e.message || e) + " | Dateigröße: " + (file ? Math.round(file.size/1024) + "KB" : "?");
   }
   state.uploading = false;
@@ -680,19 +720,17 @@ async function advanceDay() {
     .map(([p, s]) => ({ name: p, avg: s.length ? s.reduce((a,b)=>a+b,0)/s.length : 0 }))
     .sort((a,b) => b.avg - a.avg)[0]?.name || null;
 
-  const newShared = {
-    appState: {
-      ...appState,
-      currentDay: newDay,
-      dayStarted: new Date().toISOString(),
-      yesterdayWinner: winner,
-    },
-    photos: { today: {}, yesterday: photos.today || {} }
-  };
-
-  const ok = await saveShared(newShared);
+  // Move today photo bins → yesterday in the index
+  const root = await binGet(BIN_ID);
+  const pb = root?.photoBins || {};
+  ["Markus","Marion","Levy","Chey"].forEach(p => {
+    if (pb["t_"+p]) { pb["y_"+p] = pb["t_"+p]; }
+    delete pb["t_"+p];
+  });
+  const newAppState = { ...appState, currentDay: newDay, dayStarted: new Date().toISOString(), yesterdayWinner: winner };
+  const ok = await binPut(BIN_ID, { appState: newAppState, photoBins: pb });
   if (ok) {
-    state.shared = newShared;
+    state.shared = { appState: newAppState, photos: { today: {}, yesterday: state.shared.photos.today || {} }, photoBins: pb };
     state.myRatings = {};
     state.tab = "upload";
   } else {
@@ -799,11 +837,12 @@ window.logout = function() {
 
 window.deleteMyPhoto = async function() {
   if (!state.shared || !state.myName) return;
-  const newPhotos = { ...state.shared.photos, today: { ...state.shared.photos.today } };
-  delete newPhotos.today[state.myName];
-  const newShared = { ...state.shared, photos: newPhotos };
-  const ok = await saveShared(newShared);
-  if (ok) { state.shared = newShared; }
+  const ok = await deletePhotoFromBin(state.myName);
+  if (ok) {
+    const newPhotos = { ...state.shared.photos, today: { ...state.shared.photos.today } };
+    delete newPhotos.today[state.myName];
+    state.shared = { ...state.shared, photos: newPhotos };
+  }
   render();
 };
 
