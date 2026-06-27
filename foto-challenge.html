@@ -175,6 +175,7 @@ function getCountdown() {
 }
 
 function renderCountdown(app) {
+  if (localStorage.getItem("fc_bypass_cd")) { boot(); return; }
   const cd = getCountdown();
   if (!cd) { boot(); return; }
   app.innerHTML = `
