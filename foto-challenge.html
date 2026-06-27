@@ -381,7 +381,9 @@ async function handleConfigSave() {
 
   // Create new bin
   try {
-    const id = await createBin(initShared());
+    const is = initShared();
+    const id = await binCreate({ appState: is.appState, photoBins: {} });
+    if (!id) throw new Error("Bin konnte nicht erstellt werden");
     BIN_ID = id;
     localStorage.setItem("fc_bin_id", id);
     alert(`✅ Fertig! Deine Bin-ID: ${id}\n\nTeile diese ID mit Marion, Levy und Chey — sie tragen sie beim ersten Start ein.`);
@@ -409,8 +411,12 @@ function selectName(name) {
   localStorage.setItem("fc_me", name);
   state.screen = "app";
   state.tab = "upload";
-  render();
+  if (state.shared) {
+    const day = state.shared.appState.currentDay;
+    state.myRatings = state.shared.appState.ratings?.[day]?.[name] || {};
+  }
   startPolling();
+  render();
 }
 
 function renderApp(app) {
@@ -760,6 +766,8 @@ async function boot() {
 
   const data = await loadShared();
   if (!data) {
+    BIN_ID = "";
+    localStorage.removeItem("fc_bin_id");
     state.screen = "config";
     render();
     return;
