@@ -190,13 +190,49 @@ async function loadAndRender() {
     }
     return;
   }
+
+  // Migrate old photoBins format to new photos format
+  if (data.photoBins && !data.photos) {
+    const pb = data.photoBins;
+    const players = ["Markus","Marion","Levy","Chey"];
+    const [tRes, yRes] = await Promise.all([
+      Promise.all(players.map(p => pb["t_"+p] ? fetchBin(pb["t_"+p]) : Promise.resolve(null))),
+      Promise.all(players.map(p => pb["y_"+p] ? fetchBin(pb["y_"+p]) : Promise.resolve(null))),
+    ]);
+    const today = {}, yesterday = {};
+    players.forEach((p,i) => {
+      if (tRes[i]?.photo) today[p] = tRes[i].photo;
+      if (yRes[i]?.photo) yesterday[p] = yRes[i].photo;
+    });
+    const newData = { appState: data.appState, photos: { today, yesterday } };
+    await binPut(newData);
+    state.shared = { appState: newData.appState, photos: newData.photos };
+    const day = newData.appState.currentDay;
+    if (state.myName) state.myRatings = newData.appState.ratings?.[day]?.[state.myName] || {};
+    state.error = null;
+    render();
+    return;
+  }
+
   const appState = data.appState || initShared().appState;
   const photos = data.photos || { today:{}, yesterday:{} };
-  state.shared = { appState, photos, _raw: data };
+  state.shared = { appState, photos };
   const day = appState.currentDay;
   if (state.myName) state.myRatings = appState.ratings?.[day]?.[state.myName] || {};
   state.error = null;
   render();
+}
+
+async function fetchBin(id) {
+  try {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), 6000);
+    const r = await fetch(`${JSONBIN}/${id}/latest`, {
+      headers:{"X-Master-Key":API_KEY}, signal: controller.signal
+    });
+    if (!r.ok) return null;
+    return (await r.json()).record;
+  } catch { return null; }
 }
 
 async function savePhoto(person, photoData) {
