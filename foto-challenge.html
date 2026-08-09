@@ -426,8 +426,8 @@ function renderConfig(app) {
       if (e.key === "Enter") doLogin();
     });
     function doLogin() {
-      const id = (inp ? inp.value : window._guestBinId).trim();
-      if (!id) { alert("Bitte Bin-ID eingeben"); return; }
+      const typed = (inp ? inp.value : "").trim();
+      const id = typed || "6a6eff0ada38895dfeaefcda";
       BIN_ID = id; PHOTO_BIN_ID = "";
       localStorage.setItem("fc_bin_id", id);
       localStorage.removeItem("fc_photo_bin_id");
