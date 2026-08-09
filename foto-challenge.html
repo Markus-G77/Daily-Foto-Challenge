@@ -474,6 +474,7 @@ function renderNameScreen(app) {
       <div class="name-grid">
         ${PLAYERS.map(p => `<button class="name-btn" onclick="selectName('${p}')">${p}</button>`).join("")}
       </div>
+      <button onclick="showAdminSetup()" style="margin-top:32px;background:none;border:1px solid #333;border-radius:8px;padding:8px 20px;color:#444;font-size:12px;cursor:pointer">⚙ Bin-ID ändern</button>
     </div>`;
 }
 
