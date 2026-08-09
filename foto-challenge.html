@@ -427,15 +427,7 @@ function renderConfig(app) {
       localStorage.removeItem("fc_photo_bin_id");
       boot();
     });
-    // Auto-login in 3s if ID already known
-    if (window._guestBinId) {
-      window._loginTimer = setTimeout(() => {
-        BIN_ID = window._guestBinId; PHOTO_BIN_ID = "";
-        localStorage.setItem("fc_bin_id", BIN_ID);
-        localStorage.removeItem("fc_photo_bin_id");
-        boot();
-      }, 3000);
-    }
+    // No auto-login — user must press button
   }, 50);
 }
 
@@ -445,9 +437,11 @@ function showAdminSetup() {
     <div class="config-screen">
       <span style="font-size:48px">⚙️</span>
       <h2 style="margin-top:12px">Admin-Einrichtung</h2>
-      <p>Geh auf <strong>jsonbin.io</strong> → unter <em>API-Schlüssel</em> deinen <strong>Master Key</strong> kopieren.</p>
+      <p>Master Key eingeben:</p>
       <input class="config-input" id="cfg-key" placeholder="Master Key ($2b$12$...)" value="${API_KEY}" />
-      <button class="config-save-btn" onclick="handleConfigSave()">Neue Bin erstellen</button>
+      <p style="margin-top:16px;color:#888;font-size:13px">Bestehende Bin-ID (leer lassen für neue):</p>
+      <input class="config-input" id="cfg-existing-bin" placeholder="Bin-ID (optional)" value="${BIN_ID}" />
+      <button class="config-save-btn" onclick="handleConfigSave()">Speichern & starten</button>
     </div>`;
 }
 window.showAdminSetup = showAdminSetup;
@@ -476,6 +470,17 @@ async function handleConfigSave() {
   if (!key) { alert("Bitte Master Key eingeben"); return; }
   API_KEY = key;
   localStorage.setItem("fc_api_key", key);
+
+  // Use existing bin if provided
+  const existingBin = document.getElementById("cfg-existing-bin");
+  if (existingBin && existingBin.value.trim()) {
+    BIN_ID = existingBin.value.trim();
+    PHOTO_BIN_ID = "";
+    localStorage.setItem("fc_bin_id", BIN_ID);
+    localStorage.removeItem("fc_photo_bin_id");
+    await boot();
+    return;
+  }
 
   // Create new bin
   try {
