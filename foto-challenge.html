@@ -249,7 +249,8 @@ async function loadShared() {
     const appState = stateData.appState || {
       currentDay: 0, dayStarted: new Date().toISOString(), yesterdayWinner: null, ratings: {}
     };
-    const photos = photoData || { today: {}, yesterday: {} };
+    // Support both old format (photos in state bin) and new format (separate photo bin)
+    const photos = photoData || stateData.photos || { today: {}, yesterday: {} };
     return { appState, photos };
   } catch(e) { console.error("loadShared:", e); return null; }
 }
@@ -863,11 +864,13 @@ async function boot() {
 
   const data = await loadShared();
   if (!data) {
+    const errMsg = "Bin nicht erreichbar. BIN_ID=" + BIN_ID;
     BIN_ID = "";
     PHOTO_BIN_ID = "";
     localStorage.removeItem("fc_bin_id");
     localStorage.removeItem("fc_photo_bin_id");
     state.screen = "config";
+    state.error = errMsg;
     render();
     return;
   }
