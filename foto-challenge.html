@@ -438,7 +438,8 @@ async function handleGuestSave() {
 }
 window.handleGuestSave = handleGuestSave;
 window.doGuestLogin = async function() {
-  const id = (window._guestBinInput || "").trim();
+  const el = document.getElementById("cfg-binid");
+  const id = (el ? el.value : (window._guestBinInput || "")).trim();
   if (!id) { alert("Bitte Bin-ID eingeben"); return; }
   BIN_ID = id;
   PHOTO_BIN_ID = "";
