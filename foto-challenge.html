@@ -399,23 +399,45 @@ function render() {
 }
 
 function renderConfig(app) {
-  // Reset any stored bin so input starts fresh
-  window._guestBinInput = BIN_ID || "";
+  window._guestBinId = BIN_ID || "";
   app.innerHTML = `
     <div class="config-screen">
       <span style="font-size:48px">📷</span>
       <h2 style="margin-top:12px; color:#e8b84b">FotoChallenge</h2>
       <p style="margin-bottom:28px">Gib die Bin-ID ein, die Markus dir geschickt hat:</p>
-
-      <input class="config-input" id="cfg-binid" placeholder="Bin-ID eingeben…" value="${BIN_ID}" style="font-size:18px;text-align:center;letter-spacing:1px" oninput="window._guestBinInput=this.value" />
-      <button class="config-save-btn" onclick="window.doGuestLogin()">Los geht's →</button>
-
+      <input class="config-input" id="cfg-binid" placeholder="Bin-ID eingeben…"
+        style="font-size:18px;text-align:center;letter-spacing:1px" />
+      <button class="config-save-btn" id="guest-btn">Los geht's →</button>
       <div style="margin-top:32px;padding-top:24px;border-top:1px solid #222;">
         <p style="font-size:12px;color:#555;margin-bottom:8px">Du bist Markus und richtest neu ein?</p>
         <button onclick="showAdminSetup()" style="background:none;border:1px solid #333;border-radius:8px;padding:8px 16px;color:#555;font-size:12px;cursor:pointer">Admin-Einrichtung</button>
       </div>
     </div>`;
+  // Wire up after render
+  setTimeout(() => {
+    const inp = document.getElementById("cfg-binid");
+    const btn = document.getElementById("guest-btn");
+    if (inp) inp.value = window._guestBinId;
+    if (btn) btn.addEventListener("click", () => {
+      const id = (inp ? inp.value : window._guestBinId).trim();
+      if (!id) { alert("Bitte Bin-ID eingeben"); return; }
+      BIN_ID = id; PHOTO_BIN_ID = "";
+      localStorage.setItem("fc_bin_id", id);
+      localStorage.removeItem("fc_photo_bin_id");
+      boot();
+    });
+    // Auto-login in 3s if ID already known
+    if (window._guestBinId) {
+      window._loginTimer = setTimeout(() => {
+        BIN_ID = window._guestBinId; PHOTO_BIN_ID = "";
+        localStorage.setItem("fc_bin_id", BIN_ID);
+        localStorage.removeItem("fc_photo_bin_id");
+        boot();
+      }, 3000);
+    }
+  }, 50);
 }
+
 
 function showAdminSetup() {
   document.getElementById("app").innerHTML = `
