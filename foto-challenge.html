@@ -126,7 +126,7 @@ function compressImage(file) {
       const img = new Image();
       img.onerror = reject;
       img.onload = () => {
-        const maxSide = 800;
+        const maxSide = 600;
         let {width, height} = img;
         if (Math.max(width, height) > 3000) {
           const mid = document.createElement("canvas");
@@ -153,11 +153,11 @@ function compressImage(file) {
   });
 }
 function pickQ(canvas) {
-  for (const q of [0.65,0.5,0.38,0.25,0.15,0.08]) {
+  for (const q of [0.5,0.38,0.25,0.15,0.08,0.05]) {
     const r = canvas.toDataURL("image/jpeg", q);
-    if (r.length < 90000) return r;
+    if (r.length < 60000) return r;
   }
-  return canvas.toDataURL("image/jpeg", 0.08);
+  return canvas.toDataURL("image/jpeg", 0.05);
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
