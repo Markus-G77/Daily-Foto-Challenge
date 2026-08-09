@@ -407,7 +407,9 @@ function renderConfig(app) {
       <h2 style="margin-top:12px; color:#e8b84b">FotoChallenge</h2>
       <p style="margin-bottom:28px">Gib die Bin-ID ein, die Markus dir geschickt hat:</p>
       <input class="config-input" id="cfg-binid" placeholder="Bin-ID eingeben…"
-        style="font-size:18px;text-align:center;letter-spacing:1px" />
+        style="font-size:18px;text-align:center;letter-spacing:1px"
+        inputmode="text" enterkeyhint="go" />
+      <p style="color:#888;font-size:13px;margin:8px 0 16px">Bin-ID eingeben → Enter drücken</p>
       <button class="config-save-btn" id="guest-btn">Los geht's →</button>
       <div style="margin-top:32px;padding-top:24px;border-top:1px solid #222;">
         <p style="font-size:12px;color:#555;margin-bottom:8px">Du bist Markus und richtest neu ein?</p>
@@ -419,14 +421,18 @@ function renderConfig(app) {
     const inp = document.getElementById("cfg-binid");
     const btn = document.getElementById("guest-btn");
     if (inp) inp.value = window._guestBinId;
-    if (btn) btn.addEventListener("click", () => {
+    if (inp) inp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") doLogin();
+    });
+    function doLogin() {
       const id = (inp ? inp.value : window._guestBinId).trim();
       if (!id) { alert("Bitte Bin-ID eingeben"); return; }
       BIN_ID = id; PHOTO_BIN_ID = "";
       localStorage.setItem("fc_bin_id", id);
       localStorage.removeItem("fc_photo_bin_id");
       boot();
-    });
+    }
+    if (btn) btn.addEventListener("click", doLogin);
     // No auto-login — user must press button
   }, 50);
 }
@@ -869,13 +875,7 @@ async function boot() {
 
   const data = await loadShared();
   if (!data) {
-    const errMsg = "Bin nicht erreichbar. BIN_ID=" + BIN_ID;
-    BIN_ID = "";
-    PHOTO_BIN_ID = "";
-    localStorage.removeItem("fc_bin_id");
-    localStorage.removeItem("fc_photo_bin_id");
     state.screen = "config";
-    state.error = errMsg;
     render();
     return;
   }
