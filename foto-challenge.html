@@ -873,6 +873,8 @@ async function boot() {
     renderCountdown(document.getElementById("app"));
     return;
   }
+  // Debug: show what we have
+  document.getElementById("app").innerHTML += '<p style="color:yellow;padding:8px;font-size:11px">boot: BIN='+BIN_ID.substr(0,8)+' KEY='+API_KEY.substr(0,8)+'</p>';
 
   if (!BIN_ID || !API_KEY) {
     state.screen = "config";
